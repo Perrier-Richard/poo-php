@@ -11,6 +11,64 @@
 
 declare(strict_types=1);
 
+class User
+{
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+
+    public function __construct(
+        public string $username,
+        public string $status = self::STATUS_ACTIVE
+    ) {
+    }
+
+    public function setStatus(string $status): void
+    {
+        if (!in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE])) {
+            trigger_error(sprintf(
+                'Le status %s n\'est pas valide. Les status possibles sont : %s',
+                $status,
+                implode(', ', [self::STATUS_ACTIVE, self::STATUS_INACTIVE])
+            ), E_USER_ERROR);
+        };
+        $this->status = $status;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+}
+
+class Admin extends User
+{
+    public const STATUS_LOCKED = 'locked';
+
+    // la méthode est entièrement réécrite ici
+    // seule la signature reste inchangée
+    public function setStatus(string $status): void
+    {
+        if (!in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_LOCKED])) {
+            trigger_error(sprintf(
+                'Le status %s n\'est pas valide. Les status possibles sont : %s',
+                $status,
+                implode(', ', [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_LOCKED])
+            ), E_USER_ERROR);
+        }
+        $this->status = $status;
+    }
+
+    // utilise la méthode de la classe parente et ajoute un comportement
+    public function getStatus(): string
+    {
+        return strtoupper(parent::getStatus());
+    }
+}
+
+$admin = new Admin('Paddington');
+$admin->setStatus(Admin::STATUS_LOCKED);
+echo $admin->getStatus();
+
 class Lobby
 {
     /** @var array<QueuingPlayer> */
@@ -65,6 +123,22 @@ class Player
     public function getRatio(): float
     {
         return $this->ratio;
+    }
+}
+
+class QueuingPlayer extends Player
+{
+    private int $range;
+
+    public function __construct(Player $player)
+    {   
+        parent::__construct($player->getName(), $player->getRatio());
+        $this->range = 1;
+    }
+
+    public function getRange(): int
+    {
+        return $this->range;
     }
 }
 
