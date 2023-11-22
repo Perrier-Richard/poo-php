@@ -11,26 +11,25 @@
 
 declare(strict_types=1);
 
-class User
+abstract class User
 {
     public const STATUS_ACTIVE = 'active';
     public const STATUS_INACTIVE = 'inactive';
 
-    public function __construct(
-        public string $username,
-        public string $status = self::STATUS_ACTIVE
-    ) {
+    public function __construct(public string $email, public string $status = self::STATUS_ACTIVE)
+    {
     }
 
     public function setStatus(string $status): void
     {
-        if (!in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE])) {
-            trigger_error(sprintf(
+        assert(
+            in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE]),
+            sprintf(
                 'Le status %s n\'est pas valide. Les status possibles sont : %s',
                 $status,
                 implode(', ', [self::STATUS_ACTIVE, self::STATUS_INACTIVE])
-            ), E_USER_ERROR);
-        };
+            )
+        );
         $this->status = $status;
     }
 
@@ -38,36 +37,26 @@ class User
     {
         return $this->status;
     }
+
+    abstract public function getUsername(): string;
 }
 
-class Admin extends User
+final class Admin extends User
 {
-    public const STATUS_LOCKED = 'locked';
-
-    // la méthode est entièrement réécrite ici
-    // seule la signature reste inchangée
-    public function setStatus(string $status): void
+    public function __construct(string $email, string $status = self::STATUS_ACTIVE, public array $roles = [])
     {
-        if (!in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_LOCKED])) {
-            trigger_error(sprintf(
-                'Le status %s n\'est pas valide. Les status possibles sont : %s',
-                $status,
-                implode(', ', [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_LOCKED])
-            ), E_USER_ERROR);
-        }
-        $this->status = $status;
+        parent::__construct($email, $status);
     }
 
-    // utilise la méthode de la classe parente et ajoute un comportement
-    public function getStatus(): string
+    public function getUsername(): string
     {
-        return strtoupper(parent::getStatus());
+        return $this->email;
     }
 }
 
-$admin = new Admin('Paddington');
-$admin->setStatus(Admin::STATUS_LOCKED);
-echo $admin->getStatus();
+$admin = new Admin('trompete@guy.com', 'Ibrahim Maalouf');
+var_dump($admin);
+
 
 class Lobby
 {
@@ -126,7 +115,7 @@ class Player
     }
 }
 
-class QueuingPlayer extends Player
+final class QueuingPlayer extends Player
 {
     private int $range;
 
