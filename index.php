@@ -18,16 +18,15 @@ use App\Domain\MatchMaker\Player\Player;
 
 spl_autoload_register(static function ($fqcn): void {
     $path = sprintf('%s.php', str_replace(['App\\Domain', '\\'], ['src', '/'], $fqcn));
-    //echo $path;
     require_once $path;
 });
 
-$greg = new BlitzPlayer('greg');
-$jade = new BlitzPlayer('jade');
+$greg = new Player('greg');
+$chuckNorris = new Player('Chuck Norris', 3000);
 
 $lobby = new Lobby();
-$lobby->addPlayers($greg, $jade);
+$lobby->addPlayer($greg);
+$lobby->addPlayer($chuckNorris);
 
-var_dump($lobby->findOponents($lobby->queuingPlayers[0]));
-
-exit(0);
+var_dump($greg);
+var_dump($chuckNorris);

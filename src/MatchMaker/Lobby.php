@@ -1,36 +1,98 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domain\MatchMaker;
 
+use App\Domain\MatchMaker\Encounter\Encounter;
+use App\Domain\MatchMaker\Player\InLobbyPlayerInterface;
+use App\Domain\MatchMaker\Player\PlayerInterface;
 use App\Domain\MatchMaker\Player\QueuingPlayer;
-use App\Domain\MatchMaker\Player\Player;
 
-class Lobby
+class Lobby implements LobbyInterface
 {
-    /** @var array<QueuingPlayer> */
     public array $queuingPlayers = [];
+    public array $encounters = [];
 
-    public function findOponents(QueuingPlayer $player): array
+    protected function findOponents(InLobbyPlayerInterface $player): array
     {
         $minLevel = round($player->getRatio() / 100);
         $maxLevel = $minLevel + $player->getRange();
 
-        return array_filter($this->queuingPlayers, static function (QueuingPlayer $potentialOponent) use ($minLevel, $maxLevel, $player) {
+        return array_filter($this->queuingPlayers, static function (InLobbyPlayerInterface $potentialOponent) use ($minLevel, $maxLevel, $player) {
             $playerLevel = round($potentialOponent->getRatio() / 100);
 
             return $player !== $potentialOponent && ($minLevel <= $playerLevel) && ($playerLevel <= $maxLevel);
         });
     }
 
-    public function addPlayer(Player $player): void
+    public function isInLobby(PlayerInterface $player): QueuingPlayer
+    {
+        foreach ($this->queuingPlayers as $queuingPlayer) {
+            if ($queuingPlayer === $player || $queuingPlayer->getPlayer() === $player) {
+                return $queuingPlayer;
+            }
+        }
+
+        trigger_error('Ce joueur ne se trouve pas dans le lobby', E_USER_ERROR);
+    }
+
+    public function isPlaying(PlayerInterface $player): bool
+    {
+        foreach ($this->encounters as $encounter) {
+            if (Encounter::STATUS_OVER !== $encounter->getStatus() && ($encounter->getPlayerA() === $player || $encounter->getPlayerB() === $player)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function removePlayer(PlayerInterface $player): void
+    {
+        $queuingPlayer = $this->isInLobby($player);
+
+        unset($this->queuingPlayers[array_search($queuingPlayer, $this->queuingPlayers, true)]);
+    }
+
+    public function addPlayer(PlayerInterface $player): void
     {
         $this->queuingPlayers[] = new QueuingPlayer($player);
     }
 
-    public function addPlayers(Player ...$players): void
+    public function createEncounterForPlayer(InLobbyPlayerInterface $player): void
     {
-        foreach ($players as $player) {
-            $this->addPlayer($player);
+        if (!\in_array($player, $this->queuingPlayers, true)) {
+            return;
+        }
+
+        $opponents = $this->findOponents($player);
+
+        if (empty($opponents)) {
+            $player->upgradeRange();
+
+            return;
+        }
+
+        $opponent = array_shift($opponents);
+
+        $this->encounters[] = new Encounter(
+            $player->getPlayer(),
+            $opponent->getPlayer(),
+        );
+
+        $this->removePlayer($opponent);
+        $this->removePlayer($player);
+    }
+
+    public function createEncounters(): void
+    {
+        if (2 > \count($this->queuingPlayers)) {
+            trigger_error('Le nombre de joueurs est insuffisant pour créer une rencontre :(', E_USER_ERROR);
+        }
+
+        foreach ($this->queuingPlayers as $key => $player) {
+            $this->createEncounterForPlayer($player);
         }
     }
 }
