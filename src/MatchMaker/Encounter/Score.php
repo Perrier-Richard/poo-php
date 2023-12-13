@@ -11,13 +11,13 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\MatchMaker\Player;
+namespace App\Domain\MatchMaker\Encounter;
 
-interface PlayerInterface
+use App\Domain\MatchMaker\Player\PlayerInterface;
+
+class Score
 {
-    public function updateRatioAgainst(self $player, int $result): void;
-
-    public function getName(): string;
-
-    public function getRatio(): ?float;
+    public function __construct(public PlayerInterface $player, public int $score)
+    {
+    }
 }

@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the OpenClassRoom PHP Object Course.
+ *
+ * (c) Grégoire Hébert <contact@gheb.dev>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 namespace App\Domain\MatchMaker;
@@ -11,9 +20,14 @@ use App\Domain\MatchMaker\Player\QueuingPlayer;
 
 class Lobby implements LobbyInterface
 {
+    /** @var array<QueuingPlayer> */
     public array $queuingPlayers = [];
+    /** @var array<Encounter> */
     public array $encounters = [];
 
+    /**
+     * @return array<InLobbyPlayerInterface>
+     */
     protected function findOponents(InLobbyPlayerInterface $player): array
     {
         $minLevel = round($player->getRatio() / 100);
@@ -28,13 +42,15 @@ class Lobby implements LobbyInterface
 
     public function isInLobby(PlayerInterface $player): QueuingPlayer
     {
+        /** @var QueuingPlayer $queuingPlayer */
         foreach ($this->queuingPlayers as $queuingPlayer) {
+            // since we go by the interface we might be checking the player or the queuing player.
             if ($queuingPlayer === $player || $queuingPlayer->getPlayer() === $player) {
                 return $queuingPlayer;
             }
         }
 
-        trigger_error('Ce joueur ne se trouve pas dans le lobby', E_USER_ERROR);
+        throw new Exception('Ce joueur ne se trouve pas dans le lobby', E_USER_ERROR);
     }
 
     public function isPlaying(PlayerInterface $player): bool
@@ -88,7 +104,7 @@ class Lobby implements LobbyInterface
     public function createEncounters(): void
     {
         if (2 > \count($this->queuingPlayers)) {
-            trigger_error('Le nombre de joueurs est insuffisant pour créer une rencontre :(', E_USER_ERROR);
+            throw new Exception('Le nombre de joueurs est insuffisant pour créer une rencontre :(', E_USER_ERROR);
         }
 
         foreach ($this->queuingPlayers as $key => $player) {
