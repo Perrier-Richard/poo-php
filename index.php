@@ -11,52 +11,7 @@
 
 declare(strict_types=1);
 
-abstract class User
-{
-    public const STATUS_ACTIVE = 'active';
-    public const STATUS_INACTIVE = 'inactive';
-
-    public function __construct(public string $email, public string $status = self::STATUS_ACTIVE)
-    {
-    }
-
-    public function setStatus(string $status): void
-    {
-        assert(
-            in_array($status, [self::STATUS_ACTIVE, self::STATUS_INACTIVE]),
-            sprintf(
-                'Le status %s n\'est pas valide. Les status possibles sont : %s',
-                $status,
-                implode(', ', [self::STATUS_ACTIVE, self::STATUS_INACTIVE])
-            )
-        );
-        $this->status = $status;
-    }
-
-    public function getStatus(): string
-    {
-        return $this->status;
-    }
-
-    abstract public function getUsername(): string;
-}
-
-final class Admin extends User
-{
-    public function __construct(string $email, string $status = self::STATUS_ACTIVE, public array $roles = [])
-    {
-        parent::__construct($email, $status);
-    }
-
-    public function getUsername(): string
-    {
-        return $this->email;
-    }
-}
-
-$admin = new Admin('trompete@guy.com', 'Ibrahim Maalouf');
-var_dump($admin);
-
+namespace App\MatchMaker;
 
 class Lobby
 {
@@ -88,23 +43,34 @@ class Lobby
     }
 }
 
-class Player
+abstract class AbstractPlayer
 {
-    public function __construct(protected string $name, protected float $ratio = 400.0)
+    public function __construct(public string $name = 'anonymous', public float $ratio = 400.0)
     {
     }
 
+    abstract public function getName(): string;
+
+    abstract public function getRatio(): float;
+
+    abstract protected function probabilityAgainst(self $player): float;
+
+    abstract public function updateRatioAgainst(self $player, int $result): void;
+}
+
+class Player extends AbstractPlayer
+{
     public function getName(): string
     {
         return $this->name;
     }
 
-    private function probabilityAgainst(self $player): float
+    protected function probabilityAgainst(AbstractPlayer $player): float
     {
         return 1 / (1 + (10 ** (($player->getRatio() - $this->getRatio()) / 400)));
     }
 
-    public function updateRatioAgainst(self $player, int $result): void
+    public function updateRatioAgainst(AbstractPlayer $player, int $result): void
     {
         $this->ratio += 32 * ($result - $this->probabilityAgainst($player));
     }
@@ -115,24 +81,39 @@ class Player
     }
 }
 
-final class QueuingPlayer extends Player
+class QueuingPlayer extends Player
 {
-    private int $range;
-
-    public function __construct(Player $player)
-    {   
+    public function __construct(AbstractPlayer $player, protected int $range = 1)
+    {
         parent::__construct($player->getName(), $player->getRatio());
-        $this->range = 1;
     }
 
     public function getRange(): int
     {
         return $this->range;
     }
+
+    public function upgradeRange(): void
+    {
+        $this->range = min($this->range + 1, 40);
+    }
 }
 
-$greg = new Player('greg', 400);
-$jade = new Player('jade', 476);
+class BlitzPlayer extends Player
+{
+    public function __construct(public string $name = 'anonymous', public float $ratio = 1200.0)
+    {
+        parent::__construct($name, $ratio);
+    }
+
+    public function updateRatioAgainst(AbstractPlayer $player, int $result): void
+    {
+        $this->ratio += 128 * ($result - $this->probabilityAgainst($player));
+    }
+}
+
+$greg = new BlitzPlayer('greg');
+$jade = new BlitzPlayer('jade');
 
 $lobby = new Lobby();
 $lobby->addPlayers($greg, $jade);
